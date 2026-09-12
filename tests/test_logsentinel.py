@@ -5,6 +5,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from logsentinel.detector import BruteForceAnalyzer
 from logsentinel.parser import parse_ssh_log
+from scripts.macos_export_ssh_log import convert as macos_convert
 
 SAMPLE = os.path.join(os.path.dirname(__file__), "..", "sample_logs", "auth.log.sample")
 
@@ -66,3 +67,20 @@ def test_credential_stuffing_detected_for_many_usernames():
     alerts = analyzer.alerts()
     enum_alerts = [a for a in alerts if a.kind == "credential_stuffing"]
     assert any(a.ip == "45.33.32.156" for a in enum_alerts)
+
+
+def test_macos_log_conversion_is_parseable():
+    raw = [
+        "2026-09-12 03:14:01.123456-0700  localhost sshd[501]: "
+        "Failed password for invalid user admin from 203.0.113.7 port 51501 ssh2",
+        "2026-09-12 03:14:31.654321-0700  localhost sshd[501]: "
+        "Accepted password for ubuntu from 203.0.113.7 port 51507 ssh2",
+        "2026-09-12 03:14:32.000000-0700  localhost sshd[502]: some unrelated pam message",
+    ]
+    converted = macos_convert(raw, "MacBook-Air")
+    assert len(converted) == 2  # the unrelated line is dropped
+    events = list(parse_ssh_log(converted))
+    assert len(events) == 2
+    assert events[0].ip == "203.0.113.7"
+    assert events[0].success is False
+    assert events[1].success is True

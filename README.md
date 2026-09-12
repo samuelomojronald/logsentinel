@@ -78,6 +78,20 @@ python -m logsentinel.cli /var/log/auth.log --output json --out-file report.json
 python -m logsentinel.cli /var/log/auth.log --output html --out-file report.html
 ```
 
+### macOS: no `/var/log/auth.log`?
+
+macOS doesn't keep a traditional auth.log — SSH events live in the unified
+logging system instead. A helper script pulls them out and reformats them
+into the syslog format the SSH parser expects:
+
+```bash
+python3 scripts/macos_export_ssh_log.py --last 1d > /tmp/mac_auth.log
+python -m logsentinel.cli /tmp/mac_auth.log
+```
+
+You may be prompted for your password the first time (unified log access
+sometimes requires elevated permissions) — if so, rerun with `sudo`.
+
 ### Exit codes
 
 Returns `2` if any `high` or `critical` alert was raised, `0` otherwise —
